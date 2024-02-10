@@ -14,6 +14,7 @@ class ProductScreen extends StatefulWidget {
 
 class _ProductScreenState extends State<ProductScreen> {
   List<Photo> photoList = [];
+  bool _inProgress = false;
 
   @override
   void initState() {
@@ -22,52 +23,82 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   Future<void> getPhotos() async {
+    _inProgress = true;
+    setState(() {});
     Response response = await get(
       Uri.parse('https://jsonplaceholder.typicode.com/photos'),
     );
-    print(response.statusCode);
-    print(response.body);
-    print(response);
+    // print(response.statusCode);
+    // print(response.body);
+    // print(response);
 
     if (response.statusCode == 200) {
       var decodedResponse = jsonDecode(response.body);
-      // var list = decodedResponse['data'];
       for (var e in decodedResponse) {
         Photo photo = Photo.toJson(e);
-       // Photo photo = Photo(
-            // title: e['title'],
-            // url: e['url'],
-            // tumbnailUrl: e["tumbnailUrl"],
-            // albumId: e['albumId'],
-            // id: e['id']);
         photoList.add(photo);
         setState(() {});
       }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unfortunately Error! Please Try agian'),
+          ),
+        );
+      }
     }
-
+    _inProgress = false;
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Photo Gellery App'),
+        title: const Text('Photo Gellery App'),
+        actions: [
+          IconButton(
+              onPressed: () {
+                getPhotos();
+              },
+              icon: const Icon(Icons.refresh))
+        ],
       ),
-      body: Container(
-        height: double.infinity,
-        child: ListView.builder(
-            itemCount: photoList.length,
-            itemBuilder: (context, index) {
-              return ListTile(
-                onTap: (){Navigator.push(context, MaterialPageRoute(builder: (context)=> PhotoDetailsScreen(photoList: photoList[index]),),);},
-                // leading: CircleAvatar(
-                //   backgroundImage: NetworkImage(photoList[index].url ?? ''),
-                // ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          getPhotos();
+        },
+        child: SizedBox(
+          height: double.infinity,
+          child: Visibility(
+            visible: _inProgress == false,
+            replacement: const Center(
+              child: CircularProgressIndicator(),
+            ),
+            child: ListView.builder(
+                itemCount: photoList.length,
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    // onTap: (){Navigator.push(context, MaterialPageRoute(builder: (context)=> PhotoDetailsScreen(photoList: photoList[index]),),);},
+                    // leading: CircleAvatar(
+                    //   backgroundImage: NetworkImage(photoList[index].url ?? ''),
+                    // ),
 
-                leading: Image.network(photoList[index].url ?? ''),
-                title: Text(photoList[index].title ?? 'unknown'),
-              );
-            }),
+                    onTap: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => PhotoDetailsScreen(
+                                  photoList: photoList[index])));
+                    },
+
+                    leading: Image.network(photoList[index].url ?? ''),
+                    title: Text(photoList[index].title ?? 'unknown'),
+                  );
+                }),
+          ),
+        ),
       ),
     );
   }
